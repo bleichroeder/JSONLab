@@ -1,0 +1,127 @@
+.schema-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.schema-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #2563eb 100%);
+  color: white;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.schema-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.schema-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.schema-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: white;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.schema-input {
+  padding: 0 12px;
+  height: 34px; /* Consistent control height */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 4px;
+  font-size: 13px;
+  min-width: 150px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.schema-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.schema-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.schema-select {
+  padding: 0 12px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 180px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.schema-select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.schema-select option {
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.btn-copy-schema {
+  padding: 0 12px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* Removed baseline alignment overrides; using fixed height + center alignment */
+
+.btn-copy-schema .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.btn-copy-schema:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.schema-content {
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+}

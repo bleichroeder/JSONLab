@@ -1,0 +1,193 @@
+.convert-modal-content {
+  position: relative;
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  width: 90vw;
+  max-width: 1400px;
+  height: 85vh;
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.convert-controls {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.format-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.format-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.format-tab:hover {
+  background-color: var(--bg-color);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.format-tab.active {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.format-tab .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.convert-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.root-name-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.root-name-input label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.input-root-name {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  width: 180px;
+  transition: all 0.2s;
+}
+
+.input-root-name:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-root-name::placeholder {
+  color: var(--text-tertiary);
+}
+
+.btn-copy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background-color: var(--primary-color);
+  border: none;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-copy:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-copy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-copy .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-download {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background-color: var(--success-color);
+  border: none;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-download:hover:not(:disabled) {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-download .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.convert-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-left: 4px solid var(--danger-color);
+  color: var(--danger-color);
+  font-size: 0.9rem;
+}
+
+.convert-error .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.convert-editor-container {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  background-color: var(--bg-color);
+  overflow: hidden;
+}
+
+/* Dark theme adjustments */
+.theme-dark .convert-error {
+  background-color: rgba(239, 68, 68, 0.15);
+}
