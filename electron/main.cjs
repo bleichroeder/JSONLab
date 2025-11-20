@@ -97,17 +97,21 @@ ipcMain.handle('http-request', async (event, options) => {
       });
 
       req.on('error', (error) => {
-        reject({
-          message: error.message,
-          code: error.code,
+        resolve({
+          error: true,
+          message: error.message || 'Request failed',
+          code: error.code || 'UNKNOWN',
+          status: 0,
         });
       });
 
       req.on('timeout', () => {
         req.destroy();
-        reject({
+        resolve({
+          error: true,
           message: 'Request timeout',
           code: 'ETIMEDOUT',
+          status: 0,
         });
       });
 
@@ -117,9 +121,11 @@ ipcMain.handle('http-request', async (event, options) => {
 
       req.end();
     } catch (error) {
-      reject({
-        message: error.message,
+      resolve({
+        error: true,
+        message: error.message || 'Invalid request',
         code: 'INVALID_URL',
+        status: 0,
       });
     }
   });

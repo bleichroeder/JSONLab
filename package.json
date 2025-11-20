@@ -28,36 +28,49 @@
       "src/assets/JSONLab_Icon.png"
     ],
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "src/assets/JSONLab_Icon.png"
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "src/assets/JSONLab_Icon.png",
       "category": "public.app-category.developer-tools"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "src/assets/JSONLab_Icon.png",
       "category": "Development"
     }
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "@monaco-editor/react": "^4.7.0",
     "@types/dagre": "^0.7.53",
     "@types/js-yaml": "^4.0.9",
     "@types/papaparse": "^5.5.0",
+    "buffer": "^6.0.3",
     "dagre": "^0.8.5",
     "html-to-image": "^1.11.13",
     "js-yaml": "^4.1.0",
     "json-schema-to-typescript": "^15.0.4",
     "jsonpath-plus": "^10.3.0",
+    "openapi-types": "^12.1.3",
     "papaparse": "^5.5.3",
     "quicktype-core": "^23.2.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.11.4",
     "smol-toml": "^1.4.2",
+    "swagger-parser": "^10.0.3",
     "xml-js": "^1.6.11"
   },
   "devDependencies": {

@@ -13,5 +13,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-  }
+  },
+  define: {
+    // Polyfill Buffer for swagger-parser
+    'global.Buffer': ['buffer', 'Buffer'],
+  },
+  resolve: {
+    alias: {
+      buffer: 'buffer',
+    },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
+  },
 })
