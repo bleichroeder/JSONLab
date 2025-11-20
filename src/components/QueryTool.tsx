@@ -1,11 +1,29 @@
 import React, { useState } from 'react';
 import { JSONPath } from 'jsonpath-plus';
 import { JsonValue } from '../types';
+import { js2xml } from 'xml-js';
+import Papa from 'papaparse';
+import yaml from 'js-yaml';
+import { stringify as tomlStringify } from 'smol-toml';
 import './QueryTool.css';
 
 interface QueryToolProps {
   data: JsonValue;
   onResultClick?: (path: string) => void;
+  initialState?: {
+    mode: 'text' | 'visual';
+    query: string;
+    result: any;
+    conditions: any[];
+    logicOperator: 'AND' | 'OR';
+  };
+  onStateChange?: (state: {
+    mode: 'text' | 'visual';
+    query: string;
+    result: any;
+    conditions: any[];
+    logicOperator: 'AND' | 'OR';
+  }) => void;
 }
 
 interface QueryResult {
@@ -132,23 +150,93 @@ interface Condition {
 type QueryMode = 'text' | 'visual';
 type LogicOperator = 'AND' | 'OR';
 
-export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => {
-  const [mode, setMode] = useState<QueryMode>('text');
-  const [query, setQuery] = useState<string>('');
-  const [result, setResult] = useState<QueryResult | null>(null);
-  const [showExamples, setShowExamples] = useState(false);
+export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick, initialState, onStateChange }) => {
+  const [mode, setMode] = useState<QueryMode>(initialState?.mode || 'text');
+  const [query, setQuery] = useState<string>(initialState?.query || '');
+  const [result, setResult] = useState<QueryResult | null>(initialState?.result || null);
   const [examples, setExamples] = useState<Array<{ label: string; query: string; description: string }>>([]);
   
   // Visual query builder state
-  const [conditions, setConditions] = useState<Condition[]>([]);
-  const [logicOperator, setLogicOperator] = useState<LogicOperator>('AND');
+  const [conditions, setConditions] = useState<Condition[]>(initialState?.conditions || []);
+  const [logicOperator, setLogicOperator] = useState<LogicOperator>(initialState?.logicOperator || 'AND');
   const [availableProperties, setAvailableProperties] = useState<string[]>([]);
+  const [propertyValues, setPropertyValues] = useState<Map<string, any[]>>(new Map());
+
+  // Sync state changes back to parent
+  React.useEffect(() => {
+    if (onStateChange) {
+      onStateChange({
+        mode,
+        query,
+        result,
+        conditions,
+        logicOperator
+      });
+    }
+  }, [mode, query, result, conditions, logicOperator, onStateChange]);
+
+  // Extract unique values for each property
+  const extractPropertyValues = (obj: any, prefix = '', depth = 0): Map<string, any[]> => {
+    const valuesMap = new Map<string, any[]>();
+    
+    if (!obj || typeof obj !== 'object' || depth > 5) return valuesMap;
+    
+    if (Array.isArray(obj)) {
+      // For arrays, collect values from all items
+      obj.forEach(item => {
+        const itemValues = extractPropertyValues(item, prefix, depth);
+        itemValues.forEach((values, key) => {
+          const existing = valuesMap.get(key) || [];
+          valuesMap.set(key, [...existing, ...values]);
+        });
+      });
+    } else {
+      // For objects, collect property values
+      Object.keys(obj).forEach(key => {
+        const fullPath = prefix ? `${prefix}.${key}` : key;
+        const value = obj[key];
+        
+        // Store the value if it's a primitive
+        if (value !== null && value !== undefined) {
+          if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            valuesMap.set(fullPath, [value]);
+          } else if (typeof value === 'object' && !Array.isArray(value)) {
+            // Recurse for nested objects
+            const nestedValues = extractPropertyValues(value, fullPath, depth + 1);
+            nestedValues.forEach((values, nestedKey) => {
+              const existing = valuesMap.get(nestedKey) || [];
+              valuesMap.set(nestedKey, [...existing, ...values]);
+            });
+          } else if (Array.isArray(value)) {
+            // For arrays, recurse into items
+            const nestedValues = extractPropertyValues(value, fullPath, depth + 1);
+            nestedValues.forEach((values, nestedKey) => {
+              const existing = valuesMap.get(nestedKey) || [];
+              valuesMap.set(nestedKey, [...existing, ...values]);
+            });
+          }
+        }
+      });
+    }
+    
+    return valuesMap;
+  };
 
   // Extract available properties from data
   React.useEffect(() => {
     if (data) {
       const properties = extractAllProperties(data);
       setAvailableProperties(properties);
+      
+      // Extract unique values for each property
+      const values = extractPropertyValues(data);
+      // Deduplicate values for each property
+      const uniqueValues = new Map<string, any[]>();
+      values.forEach((vals, key) => {
+        const unique = Array.from(new Set(vals)).slice(0, 20); // Limit to 20 unique values
+        uniqueValues.set(key, unique);
+      });
+      setPropertyValues(uniqueValues);
     }
   }, [data]);
 
@@ -160,15 +248,15 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
   }, [data]);
 
   // Extract all property paths from the data
-  const extractAllProperties = (obj: any, prefix = ''): string[] => {
+  const extractAllProperties = (obj: any, prefix = '', depth = 0): string[] => {
     const properties: Set<string> = new Set();
     
-    if (!obj || typeof obj !== 'object') return [];
+    if (!obj || typeof obj !== 'object' || depth > 5) return [];
     
     if (Array.isArray(obj)) {
       if (obj.length > 0 && typeof obj[0] === 'object') {
         // Extract from first array item
-        return extractAllProperties(obj[0], prefix);
+        return extractAllProperties(obj[0], prefix, depth);
       }
     } else {
       Object.keys(obj).forEach(key => {
@@ -177,10 +265,11 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
         
         const value = obj[key];
         if (value && typeof value === 'object' && !Array.isArray(value)) {
-          // Recurse for nested objects (limit depth to 2)
-          if (prefix.split('.').length < 2) {
-            extractAllProperties(value, fullPath).forEach(p => properties.add(p));
-          }
+          // Recurse for nested objects
+          extractAllProperties(value, fullPath, depth + 1).forEach(p => properties.add(p));
+        } else if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+          // Recurse into arrays of objects
+          extractAllProperties(value[0], fullPath, depth + 1).forEach(p => properties.add(p));
         }
       });
     }
@@ -209,6 +298,53 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
     setConditions(conditions.map(c => 
       c.id === id ? { ...c, [field]: value } : c
     ));
+  };
+
+  // Generate suggestions for visual builder value input
+  const generateVisualValueSuggestions = (_conditionId: string, property: string, currentValue: string) => {
+    const values = propertyValues.get(property);
+    if (!values || values.length === 0) {
+      return [];
+    }
+
+    // Filter values based on current input
+    const filtered = currentValue.trim() === ''
+      ? values
+      : values.filter(v => 
+          String(v).toLowerCase().includes(currentValue.toLowerCase())
+        );
+
+    return filtered.slice(0, 15).map(v => ({
+      text: String(v),
+      description: `Value: ${String(v)}`
+    }));
+  };
+
+  // Handle value input change in visual builder
+  const handleVisualValueChange = (conditionId: string, property: string, value: string, inputElement: HTMLInputElement) => {
+    updateCondition(conditionId, 'value', value);
+    
+    // Generate and show suggestions
+    const newSuggestions = generateVisualValueSuggestions(conditionId, property, value);
+    setVisualSuggestions(prev => ({ ...prev, [conditionId]: newSuggestions }));
+    setActiveVisualInput(newSuggestions.length > 0 ? conditionId : null);
+    
+    // Calculate position
+    if (newSuggestions.length > 0) {
+      const rect = inputElement.getBoundingClientRect();
+      setSuggestionsPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  };
+
+  // Apply suggestion in visual builder
+  const applyVisualSuggestion = (conditionId: string, suggestionText: string) => {
+    updateCondition(conditionId, 'value', suggestionText);
+    setVisualSuggestions(prev => ({ ...prev, [conditionId]: [] }));
+    setActiveVisualInput(null);
   };
 
   // Generate JSONPath from visual conditions
@@ -272,12 +408,27 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
         return;
       }
 
-      // Execute the JSONPath query
-      const queryResult = JSONPath({
-        path: queryToExecute,
-        json: data,
-        resultType: 'all',
-      });
+      let queryResult;
+      
+      // Try to execute the query, catching errors from missing nested properties
+      try {
+        queryResult = JSONPath({
+          path: queryToExecute,
+          json: data,
+          resultType: 'all',
+          wrap: false,
+        });
+      } catch (execError: any) {
+        // If error is about missing properties, it means the filter didn't match anything
+        const errMsg = execError.message || '';
+        if (errMsg.includes('Cannot read propert') || 
+            errMsg.includes('undefined is not an object')) {
+          queryResult = [];
+        } else {
+          // Re-throw other errors (actual syntax errors)
+          throw execError;
+        }
+      }
 
       if (queryResult && queryResult.length > 0) {
         const items = queryResult.map((item: any) => ({
@@ -391,7 +542,6 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
 
   const loadExample = (exampleQuery: string) => {
     setQuery(exampleQuery);
-    setShowExamples(false);
   };
 
   const copyResult = (value: any) => {
@@ -403,54 +553,396 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
     setQuery('');
   };
 
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{text: string, description: string}>>([]);
+  const [, setCursorPosition] = useState(0);
+  const [suggestionsPosition, setSuggestionsPosition] = useState({ top: 0, left: 0, width: 0 });
+  const queryInputRef = React.useRef<HTMLInputElement>(null);
+  const [visualSuggestions, setVisualSuggestions] = useState<{[key: string]: Array<{text: string, description: string}>}>({});
+  const [activeVisualInput, setActiveVisualInput] = useState<string | null>(null);
+  const visualInputRefs = React.useRef<{[key: string]: HTMLInputElement}>({});
+
+  const flattenObject = (obj: any, prefix = ''): any => {
+    const flattened: any = {};
+    
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const value = obj[key];
+        const newKey = prefix ? `${prefix}.${key}` : key;
+        
+        if (value === null || value === undefined) {
+          flattened[newKey] = '';
+        } else if (Array.isArray(value)) {
+          flattened[newKey] = JSON.stringify(value);
+        } else if (typeof value === 'object') {
+          Object.assign(flattened, flattenObject(value, newKey));
+        } else {
+          flattened[newKey] = value;
+        }
+      }
+    }
+    
+    return flattened;
+  };
+
+  const validateQuery = (queryText: string): string | null => {
+    if (!queryText.trim()) return null;
+
+    // Check if query starts with $
+    if (!queryText.startsWith('$')) {
+      return 'Query must start with $ (root)';
+    }
+
+    // Check for unmatched brackets
+    const openBrackets = (queryText.match(/\[/g) || []).length;
+    const closeBrackets = (queryText.match(/\]/g) || []).length;
+    if (openBrackets !== closeBrackets) {
+      return 'Unmatched brackets in query';
+    }
+
+    // Check for unmatched parentheses in filters
+    const openParens = (queryText.match(/\(/g) || []).length;
+    const closeParens = (queryText.match(/\)/g) || []).length;
+    if (openParens !== closeParens) {
+      return 'Unmatched parentheses in filter expression';
+    }
+
+    // Check for invalid filter syntax
+    const filterMatch = queryText.match(/\[\?\(([^)]+)\)\]/);
+    if (filterMatch) {
+      const filterExpr = filterMatch[1];
+      // Must contain @ for current item
+      if (!filterExpr.includes('@')) {
+        return 'Filter expression must reference current item with @';
+      }
+    }
+
+    // Don't validate incomplete queries
+    if (queryText.endsWith('(') || queryText.endsWith('[') || queryText.endsWith('.')) {
+      return null;
+    }
+
+    // For syntax-only validation, just check basic structure
+    // Don't execute against data as it may cause false errors for valid queries
+    return null;
+  };
+
+  const generateSuggestions = (queryText: string, cursorPos: number): Array<{text: string, description: string}> => {
+    const suggestions: Array<{text: string, description: string}> = [];
+    const textBeforeCursor = queryText.substring(0, cursorPos);
+    const lastChar = textBeforeCursor[textBeforeCursor.length - 1];
+    const afterDot = textBeforeCursor.match(/\.([^.\[\]\(\)\s<>=!&|"']*?)$/);
+    const afterAt = textBeforeCursor.match(/@\.([^.\[\]\(\)\s<>=!&|"']*?)$/);
+    
+    // Check if we're inside quotes after an operator and property (support nested paths)
+    const insideQuotes = textBeforeCursor.match(/@\.((?:[\w]+\.)*[\w]+)\s*[=!<>]+\s*["']([^"]*)$/);
+    const afterOperator = textBeforeCursor.match(/@\.((?:[\w]+\.)*[\w]+)\s*[=!<>]+\s*$/);
+
+    // If typing after @ in a filter
+    if (afterAt && availableProperties.length > 0) {
+      const partial = afterAt[1].toLowerCase();
+      const currentPath = partial.substring(0, partial.lastIndexOf('.') + 1);
+      const searchTerm = partial.substring(partial.lastIndexOf('.') + 1);
+      
+      availableProperties
+        .filter(prop => {
+          // For nested properties, show completions for the current level
+          if (currentPath) {
+            return prop.toLowerCase().startsWith(partial);
+          }
+          // For root level, show all matches
+          return prop.toLowerCase().startsWith(searchTerm);
+        })
+        .slice(0, 15)
+        .forEach(prop => {
+          suggestions.push({
+            text: prop,
+            description: `Property: ${prop}`
+          });
+        });
+    }
+    // If typing after . for property access
+    else if (afterDot && availableProperties.length > 0) {
+      const partial = afterDot[1].toLowerCase();
+      
+      // Try to find what prefix was before this dot
+      const beforeDot = textBeforeCursor.substring(0, textBeforeCursor.lastIndexOf('.'));
+      const pathMatch = beforeDot.match(/@\.([\w.]+)$/);
+      const basePath = pathMatch ? pathMatch[1] + '.' : '';
+      
+      availableProperties
+        .filter(prop => {
+          if (basePath) {
+            // Show properties that start with basePath + partial
+            return prop.toLowerCase().startsWith((basePath + partial).toLowerCase());
+          }
+          return prop.toLowerCase().startsWith(partial);
+        })
+        .slice(0, 15)
+        .forEach(prop => {
+          suggestions.push({
+            text: basePath ? prop.substring(basePath.length) : prop,
+            description: `Property: ${prop}`
+          });
+        });
+    }
+    // If at the start or after $ or [
+    else if (queryText === '$' || lastChar === '$' || lastChar === '[') {
+      suggestions.push(
+        { text: '[*]', description: 'All elements in array' },
+        { text: '[0]', description: 'First element' },
+        { text: '[?(@', description: 'Start filter expression' },
+        { text: '..', description: 'Recursive descent' }
+      );
+
+      // Add top-level properties
+      if (availableProperties.length > 0 && lastChar !== '[') {
+        availableProperties
+          .filter(prop => !prop.includes('.'))
+          .slice(0, 5)
+          .forEach(prop => {
+            suggestions.push({
+              text: `.${prop}`,
+              description: `Property: ${prop}`
+            });
+          });
+      }
+    }
+    // If in a filter expression
+    else if (textBeforeCursor.includes('[?(') && !textBeforeCursor.match(/\[\?\([^)]+\)\]/)) {
+      if (lastChar === '@') {
+        suggestions.push(
+          { text: '.', description: 'Access property' }
+        );
+      } else if (textBeforeCursor.match(/@\.[^\s<>=!&|]*$/)) {
+        suggestions.push(
+          { text: ' == ', description: 'Equals' },
+          { text: ' != ', description: 'Not equals' },
+          { text: ' > ', description: 'Greater than' },
+          { text: ' < ', description: 'Less than' },
+          { text: ' >= ', description: 'Greater or equal' },
+          { text: ' <= ', description: 'Less or equal' },
+          { text: ' =~ /', description: 'Regex match' }
+        );
+      } else if (afterOperator || insideQuotes) {
+        // Extract the property name (support nested paths)
+        const propertyMatch = textBeforeCursor.match(/@\.((?:[\w]+\.)*[\w]+)/);
+        if (propertyMatch) {
+          const propName = propertyMatch[1];
+          const values = propertyValues.get(propName);
+          
+          if (values && values.length > 0) {
+            // Get partial value if inside quotes
+            const partial = insideQuotes ? insideQuotes[2].toLowerCase() : '';
+            
+            // Suggest actual values from the data
+            values
+              .filter(val => {
+                if (!partial) return true;
+                return String(val).toLowerCase().includes(partial);
+              })
+              .slice(0, 10)
+              .forEach(val => {
+                const isString = typeof val === 'string';
+                const displayValue = isString ? `"${val}"` : String(val);
+                const insertValue = insideQuotes ? String(val) : displayValue;
+                suggestions.push({
+                  text: insertValue,
+                  description: `Existing value in ${propName}`
+                });
+              });
+          }
+        }
+        
+        // Also suggest generic value types if no specific values or at the end
+        if (afterOperator && suggestions.length === 0) {
+          suggestions.push(
+            { text: '""', description: 'String value' },
+            { text: '0', description: 'Number value' },
+            { text: 'true', description: 'Boolean true' },
+            { text: 'false', description: 'Boolean false' }
+          );
+        }
+      }
+    }
+
+    return suggestions;
+  };
+
+  const handleQueryChange = (newQuery: string) => {
+    setQuery(newQuery);
+    
+    // Validate in real-time
+    const error = validateQuery(newQuery);
+    setValidationError(error);
+
+    // Generate suggestions
+    if (queryInputRef.current) {
+      const cursorPos = queryInputRef.current.selectionStart || 0;
+      setCursorPosition(cursorPos);
+      const newSuggestions = generateSuggestions(newQuery, cursorPos);
+      setSuggestions(newSuggestions);
+      setShowSuggestions(newSuggestions.length > 0 && newQuery.length > 0);
+      
+      // Calculate position for fixed dropdown
+      if (newSuggestions.length > 0 && newQuery.length > 0) {
+        const rect = queryInputRef.current.getBoundingClientRect();
+        setSuggestionsPosition({
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width
+        });
+      }
+    }
+  };
+
+  const applySuggestion = (suggestionText: string) => {
+    if (!queryInputRef.current) return;
+
+    const selectionStart = queryInputRef.current.selectionStart || 0;
+    const selectionEnd = queryInputRef.current.selectionEnd || 0;
+    const hasSelection = selectionStart !== selectionEnd;
+
+    let newQuery = '';
+    let newCursorPos = selectionStart;
+    
+    if (hasSelection) {
+      // If there's a selection, replace the selected text
+      const textBeforeSelection = query.substring(0, selectionStart);
+      const textAfterSelection = query.substring(selectionEnd);
+      
+      // Check if we're replacing a value inside quotes
+      const insideQuotesMatch = textBeforeSelection.match(/@\.((?:[\w]+\.)*[\w]+)\s*[=!<>]+\s*["']$/);
+      if (insideQuotesMatch && textAfterSelection.match(/^[^"']*["']/)) {
+        // We're replacing text inside quotes
+        newQuery = textBeforeSelection + suggestionText + textAfterSelection;
+        newCursorPos = textBeforeSelection.length + suggestionText.length;
+      } else {
+        // Just replace the selected text
+        newQuery = textBeforeSelection + suggestionText + textAfterSelection;
+        newCursorPos = textBeforeSelection.length + suggestionText.length;
+      }
+    } else {
+      // No selection - insert at cursor position
+      const textBeforeCursor = query.substring(0, selectionStart);
+      const textAfterCursor = query.substring(selectionStart);
+
+      // Check if we're inside quotes (for value suggestions)
+      const insideQuotesMatch = textBeforeCursor.match(/@\.((?:[\w]+\.)*[\w]+)\s*[=!<>]+\s*["']([^"]*)$/);
+      if (insideQuotesMatch) {
+        // Replace the partial value inside quotes
+        const partialValue = insideQuotesMatch[2];
+        const beforePartial = textBeforeCursor.substring(0, textBeforeCursor.length - partialValue.length);
+        newQuery = beforePartial + suggestionText + textAfterCursor;
+        newCursorPos = beforePartial.length + suggestionText.length;
+      }
+      // Check what we're replacing
+      else if (textBeforeCursor.match(/\.([^.\[\]\(\)\s<>=!&|"']*?)$/)) {
+        // Replace after dot
+        const match = textBeforeCursor.match(/\.([^.\[\]\(\)\s<>=!&|"']*?)$/);
+        if (match) {
+          const partialProp = match[1];
+          const beforePartial = textBeforeCursor.substring(0, textBeforeCursor.length - partialProp.length);
+          newQuery = beforePartial + suggestionText + textAfterCursor;
+          newCursorPos = beforePartial.length + suggestionText.length;
+        }
+      } else if (textBeforeCursor.match(/@\.([^.\[\]\(\)\s<>=!&|"']*?)$/)) {
+        // Replace after @.
+        const match = textBeforeCursor.match(/@\.([^.\[\]\(\)\s<>=!&|"']*?)$/);
+        if (match) {
+          const partialProp = match[1];
+          const beforePartial = textBeforeCursor.substring(0, textBeforeCursor.length - partialProp.length);
+          newQuery = beforePartial + suggestionText + textAfterCursor;
+          newCursorPos = beforePartial.length + suggestionText.length;
+        }
+      } else {
+        // Just insert at cursor
+        newQuery = textBeforeCursor + suggestionText + textAfterCursor;
+        newCursorPos = selectionStart + suggestionText.length;
+      }
+    }
+
+    setQuery(newQuery);
+    setShowSuggestions(false);
+    
+    // Set cursor position after insertion
+    setTimeout(() => {
+      if (queryInputRef.current) {
+        queryInputRef.current.focus();
+        queryInputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  const exportResults = (format: 'json' | 'csv' | 'xml' | 'yaml' | 'toml') => {
+    if (!result?.data) return;
+
+    let content = '';
+    let filename = `query-results.${format}`;
+    let mimeType = 'text/plain';
+
+    try {
+      switch (format) {
+        case 'json':
+          content = JSON.stringify(result.data, null, 2);
+          mimeType = 'application/json';
+          break;
+
+        case 'csv':
+          let dataForCsv: any[] = [];
+          if (Array.isArray(result.data)) {
+            dataForCsv = result.data.map(item => 
+              typeof item === 'object' && item !== null ? flattenObject(item) : { value: item }
+            );
+          } else if (typeof result.data === 'object' && result.data !== null) {
+            dataForCsv = [flattenObject(result.data)];
+          } else {
+            throw new Error('CSV export requires array or object data');
+          }
+          content = Papa.unparse(dataForCsv, { header: true, skipEmptyLines: true });
+          mimeType = 'text/csv';
+          break;
+
+        case 'xml':
+          const wrappedData = { results: result.data };
+          content = js2xml(wrappedData, { compact: true, spaces: 2 });
+          mimeType = 'application/xml';
+          break;
+
+        case 'yaml':
+          content = yaml.dump(result.data, { indent: 2, lineWidth: -1, noRefs: true });
+          mimeType = 'application/x-yaml';
+          break;
+
+        case 'toml':
+          const dataForToml = Array.isArray(result.data) 
+            ? { results: result.data }
+            : result.data;
+          content = tomlStringify(dataForToml);
+          mimeType = 'application/toml';
+          break;
+      }
+
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setShowExportMenu(false);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
   return (
     <div className="query-tool">
-      <div className="query-tool-header">
-        <h2>JSON Query</h2>
-        {mode === 'text' && (
-          <button
-            className="btn-examples"
-            onClick={() => setShowExamples(!showExamples)}
-          >
-            {showExamples ? 'Hide' : 'Show'} Examples
-          </button>
-        )}
-      </div>
-
-      <div className={`examples-panel ${showExamples ? 'show' : ''}`}>
-        <div className="examples-panel-content">
-          <h3>Example Queries</h3>
-          <div className="examples-grid">
-            {examples.map((example, index) => (
-              <div key={index} className="example-item">
-                <button
-                  className="btn-example"
-                  onClick={() => loadExample(example.query)}
-                  title={example.description}
-                >
-                  <strong>{example.label}</strong>
-                  <code>{example.query}</code>
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="query-help">
-            <p>
-              <strong>JSONPath Syntax:</strong>
-            </p>
-            <ul>
-              <li><code>$</code> - Root element</li>
-              <li><code>@</code> - Current element (in filters)</li>
-              <li><code>*</code> - Wildcard (all elements)</li>
-              <li><code>..</code> - Recursive descent</li>
-              <li><code>[n]</code> - Array index</li>
-              <li><code>[n:m]</code> - Array slice</li>
-              <li><code>[?(expression)]</code> - Filter expression</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
       {/* Mode Tabs */}
       <div className="query-mode-tabs">
         <button 
@@ -469,19 +961,123 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
         </button>
       </div>
 
+      {/* Examples Panel - only in text mode */}
+      {mode === 'text' && (
+        <div className="examples-panel show">
+          <div className="examples-panel-content">
+            <h3>Example Queries</h3>
+            <div className="examples-grid">
+              {examples.map((example, index) => (
+                <div key={index} className="example-item">
+                  <button
+                    className="btn-example"
+                    onClick={() => loadExample(example.query)}
+                    title={example.description}
+                  >
+                    <strong>{example.label}</strong>
+                    <code>{example.query}</code>
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="query-help">
+              <p>
+                <strong>JSONPath Syntax:</strong>
+              </p>
+              <ul>
+                <li><code>$</code> - Root element</li>
+                <li><code>@</code> - Current element (in filters)</li>
+                <li><code>*</code> - Wildcard (all elements)</li>
+                <li><code>..</code> - Recursive descent</li>
+                <li><code>[n]</code> - Array index</li>
+                <li><code>[n:m]</code> - Array slice</li>
+                <li><code>[?(expression)]</code> - Filter expression</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Text Mode */}
       {mode === 'text' && (
         <div className="query-input-section">
           <div className="query-input-wrapper">
-            <input
-              type="text"
-              className="query-input"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter JSONPath query (e.g., $[?(@.price > 100)])"
-            />
-            <button className="btn-execute" onClick={executeQuery}>
+            <div className="input-with-validation">
+              <input
+                ref={queryInputRef}
+                type="text"
+                className={`query-input ${validationError ? 'has-error' : ''}`}
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onKeyPress={handleKeyPress}
+                onFocus={(e) => {
+                  if (query.length > 0 && suggestions.length > 0) {
+                    setShowSuggestions(true);
+                    // Update position on focus
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setSuggestionsPosition({
+                      top: rect.bottom + 4,
+                      left: rect.left,
+                      width: rect.width
+                    });
+                  }
+                }}
+                onBlur={() => {
+                  // Delay to allow clicking on suggestions
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                onClick={(e) => {
+                  const input = e.target as HTMLInputElement;
+                  const cursorPos = input.selectionStart || 0;
+                  setCursorPosition(cursorPos);
+                  const newSuggestions = generateSuggestions(query, cursorPos);
+                  setSuggestions(newSuggestions);
+                  setShowSuggestions(newSuggestions.length > 0 && query.length > 0);
+                  
+                  // Calculate position for fixed dropdown
+                  if (newSuggestions.length > 0 && query.length > 0) {
+                    const rect = input.getBoundingClientRect();
+                    setSuggestionsPosition({
+                      top: rect.bottom + 4,
+                      left: rect.left,
+                      width: rect.width
+                    });
+                  }
+                }}
+                placeholder="Enter JSONPath query (e.g., $[?(@.price > 100)])"
+              />
+              {validationError && (
+                <div className="validation-error">
+                  <span className="material-symbols-outlined">error</span>
+                  {validationError}
+                </div>
+              )}
+              {showSuggestions && suggestions.length > 0 && (
+                <div 
+                  className="autocomplete-suggestions"
+                  style={{
+                    top: `${suggestionsPosition.top}px`,
+                    left: `${suggestionsPosition.left}px`,
+                    width: `${suggestionsPosition.width}px`
+                  }}
+                >
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      className="suggestion-item"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applySuggestion(suggestion.text);
+                      }}
+                    >
+                      <span className="suggestion-text">{suggestion.text}</span>
+                      <span className="suggestion-description">{suggestion.description}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button className="btn-execute" onClick={executeQuery} disabled={!!validationError}>
               Execute
             </button>
           </div>
@@ -546,13 +1142,61 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
                       <option value="contains">contains</option>
                       <option value="=~">matches regex (=~)</option>
                     </select>
-                    <input 
-                      type="text"
-                      className="condition-value"
-                      value={condition.value}
-                      onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
-                      placeholder="Enter value..."
-                    />
+                    <div className="visual-value-wrapper" style={{ position: 'relative' }}>
+                      <input 
+                        ref={(el) => {
+                          if (el) visualInputRefs.current[condition.id] = el;
+                        }}
+                        type="text"
+                        className="condition-value"
+                        value={condition.value}
+                        onChange={(e) => handleVisualValueChange(condition.id, condition.property, e.target.value, e.target)}
+                        onFocus={(e) => {
+                          const suggestions = generateVisualValueSuggestions(condition.id, condition.property, condition.value);
+                          setVisualSuggestions(prev => ({ ...prev, [condition.id]: suggestions }));
+                          if (suggestions.length > 0) {
+                            setActiveVisualInput(condition.id);
+                            const rect = e.target.getBoundingClientRect();
+                            setSuggestionsPosition({
+                              top: rect.bottom + 4,
+                              left: rect.left,
+                              width: rect.width
+                            });
+                          }
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => {
+                            setActiveVisualInput(null);
+                            setVisualSuggestions(prev => ({ ...prev, [condition.id]: [] }));
+                          }, 200);
+                        }}
+                        placeholder="Enter value..."
+                      />
+                      {activeVisualInput === condition.id && visualSuggestions[condition.id]?.length > 0 && (
+                        <div 
+                          className="autocomplete-suggestions"
+                          style={{
+                            top: `${suggestionsPosition.top}px`,
+                            left: `${suggestionsPosition.left}px`,
+                            width: `${suggestionsPosition.width}px`
+                          }}
+                        >
+                          {visualSuggestions[condition.id].map((suggestion, idx) => (
+                            <button
+                              key={idx}
+                              className="suggestion-item"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                applyVisualSuggestion(condition.id, suggestion.text);
+                              }}
+                            >
+                              <span className="suggestion-text">{suggestion.text}</span>
+                              <span className="suggestion-description">{suggestion.description}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <button 
                       className="btn-remove-condition"
                       onClick={() => removeCondition(condition.id)}
@@ -598,13 +1242,51 @@ export const QueryTool: React.FC<QueryToolProps> = ({ data, onResultClick }) => 
                     Results <span className="result-count">({result.count} {result.count === 1 ? 'match' : 'matches'})</span>
                   </h3>
                   {result.count! > 0 && (
-                    <button 
-                      className="btn-copy-all" 
-                      onClick={() => copyResult(result.data)} 
-                      title="Copy all results to clipboard"
-                    >
-                      Copy All
-                    </button>
+                    <div className="results-actions">
+                      <button 
+                        className="btn-copy-all" 
+                        onClick={() => copyResult(result.data)} 
+                        title="Copy all results to clipboard"
+                      >
+                        <span className="material-symbols-outlined">content_copy</span>
+                        Copy
+                      </button>
+                      <div className="export-dropdown">
+                        <button 
+                          className="btn-export" 
+                          onClick={() => setShowExportMenu(!showExportMenu)}
+                          title="Export results"
+                        >
+                          <span className="material-symbols-outlined">download</span>
+                          Export
+                          <span className="material-symbols-outlined">{showExportMenu ? 'expand_less' : 'expand_more'}</span>
+                        </button>
+                        {showExportMenu && (
+                          <div className="export-menu">
+                            <button onClick={() => exportResults('json')} className="export-option">
+                              <span className="material-symbols-outlined">data_object</span>
+                              Export as JSON
+                            </button>
+                            <button onClick={() => exportResults('csv')} className="export-option">
+                              <span className="material-symbols-outlined">table_chart</span>
+                              Export as CSV
+                            </button>
+                            <button onClick={() => exportResults('xml')} className="export-option">
+                              <span className="material-symbols-outlined">code</span>
+                              Export as XML
+                            </button>
+                            <button onClick={() => exportResults('yaml')} className="export-option">
+                              <span className="material-symbols-outlined">description</span>
+                              Export as YAML
+                            </button>
+                            <button onClick={() => exportResults('toml')} className="export-option">
+                              <span className="material-symbols-outlined">settings</span>
+                              Export as TOML
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
                 {result.count! > 0 ? (

@@ -1,9 +1,11 @@
 .resizable-panels {
   display: flex;
   width: 100%;
-  height: calc(100vh - 300px);
+  flex: 1;
   gap: 0;
   position: relative;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .resizable-panel {

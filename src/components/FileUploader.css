@@ -59,3 +59,20 @@
 .browse-button:hover {
   background-color: var(--primary-hover);
 }
+
+.api-import-button {
+  margin-top: 8px;
+  padding: 10px 24px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.api-import-button:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--primary-color);
+}

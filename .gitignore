@@ -12,6 +12,23 @@ dist
 dist-ssr
 *.local
 
+# Electron build output
+release/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.snap
+
+# Electron builder cache
+.electron-builder-cache/
+
+# Python virtual environment
+.venv/
+venv/
+*.pyc
+__pycache__/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

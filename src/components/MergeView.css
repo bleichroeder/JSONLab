@@ -1,0 +1,449 @@
+.merge-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.merge-dialog {
+  background: var(--card-bg);
+  border-radius: 12px;
+  width: 95%;
+  max-width: 1600px;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.merge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.merge-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-close-merge {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-close-merge:hover {
+  background: var(--bg-color);
+  color: var(--text-primary);
+}
+
+.btn-close-merge .material-symbols-outlined {
+  font-size: 24px;
+}
+
+.merge-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Strategy Section */
+.merge-strategy-section {
+  background: var(--bg-secondary);
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.merge-strategy-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.strategy-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.strategy-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.strategy-option:hover {
+  border-color: var(--primary-color);
+  background: var(--bg-color);
+}
+
+.strategy-option.active {
+  border-color: var(--primary-color);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.strategy-option input[type="radio"] {
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.strategy-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.strategy-info strong {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.strategy-info small {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Editors */
+.merge-editors {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.editor-panel {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.editor-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.editor-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.merge-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  color: white;
+}
+
+.merge-arrow .material-symbols-outlined {
+  font-size: 28px;
+}
+
+/* Conflicts */
+.conflicts-section {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .conflicts-section {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.conflicts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.conflicts-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-theme="dark"] .conflicts-header h3 {
+  color: #fbbf24;
+}
+
+.conflicts-header .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.btn-toggle-conflicts {
+  background: transparent;
+  border: none;
+  color: #92400e;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .btn-toggle-conflicts {
+  color: #fbbf24;
+}
+
+.btn-toggle-conflicts:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.conflicts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 20px 20px 20px;
+}
+
+.conflict-item {
+  background: white;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+[data-theme="dark"] .conflict-item {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.conflict-path {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+[data-theme="dark"] .conflict-path {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.conflict-path code {
+  font-size: 0.9rem;
+  color: #92400e;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .conflict-path code {
+  color: #fbbf24;
+}
+
+.conflict-values {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conflict-value {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+[data-theme="dark"] .conflict-value {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.conflict-value label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.conflict-value input[type="radio"] {
+  cursor: pointer;
+}
+
+.conflict-value strong {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.conflict-value code {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  padding: 4px 8px;
+  border-radius: 4px;
+  word-break: break-word;
+}
+
+/* Preview */
+.merge-preview-section {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.preview-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.preview-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--success-color);
+  font-weight: 500;
+}
+
+.preview-status .material-symbols-outlined {
+  font-size: 18px;
+}
+
+/* Actions */
+.merge-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.btn-primary .material-symbols-outlined,
+.btn-secondary .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:disabled {
+  background: var(--border-color);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .merge-editors {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .merge-arrow {
+    transform: rotate(90deg);
+  }
+
+  .strategy-options {
+    grid-template-columns: 1fr;
+  }
+}

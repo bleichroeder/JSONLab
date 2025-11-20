@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './FileUploader.css';
+import { ApiImportView } from './ApiImportView';
 
 interface FileUploaderProps {
   onFileLoad: (content: string, filename: string) => void;
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({ onFileLoad }) => {
+  const [showApiImport, setShowApiImport] = useState(false);
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -73,8 +76,25 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileLoad }) => {
           <label htmlFor="file-input" className="browse-button">
             Browse Files
           </label>
+          <button 
+            className="api-import-button"
+            onClick={() => setShowApiImport(true)}
+            type="button"
+          >
+            Import from API
+          </button>
         </div>
       </div>
+
+      {showApiImport && (
+        <ApiImportView 
+          onClose={() => setShowApiImport(false)}
+          onImport={(data) => {
+            const jsonString = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+            onFileLoad(jsonString, 'api-import.json');
+          }}
+        />
+      )}
     </div>
   );
 };

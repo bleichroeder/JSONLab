@@ -2,12 +2,45 @@
   "name": "jsonlab",
   "version": "1.0.0",
   "description": "A tool for viewing, editing, and manipulating strongly-typed JSON documents",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "electron:dev": "concurrently \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --win",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:linux": "npm run build && electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.jsonlab.app",
+    "productName": "JSONLab",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "src/assets/JSONLab_Icon.png"
+    ],
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "src/assets/JSONLab_Icon.png"
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "src/assets/JSONLab_Icon.png",
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "src/assets/JSONLab_Icon.png",
+      "category": "Development"
+    }
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -33,10 +66,15 @@
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.3",
+    "electron-builder": "^26.0.12",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "wait-on": "^9.0.3"
   }
 }

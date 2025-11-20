@@ -4,7 +4,7 @@ import { DocumentViewer } from './components/DocumentViewer';
 import { DataEditor } from './components/DataEditor';
 import { ResizablePanels } from './components/ResizablePanels';
 import { QueryTool } from './components/QueryTool';
-import { JsonValue, JsonArray, JsonObject, DocumentState, VersionHistoryItem } from './types';
+import { JsonValue, JsonObject, DocumentState, VersionHistoryItem } from './types';
 import { parseJson } from './utils/jsonUtils';
 import { useTheme } from './contexts/ThemeContext';
 import logo_dark from './assets/JSONLab_Logo_Dark.png';
@@ -28,6 +28,22 @@ function App() {
   const [currentVersionIndex, setCurrentVersionIndex] = React.useState<number>(-1);
   const [showRestorePrompt, setShowRestorePrompt] = React.useState(false);
   const [savedSession, setSavedSession] = React.useState<any>(null);
+  const [showQueryDialog, setShowQueryDialog] = React.useState(false);
+  
+  // QueryTool state persistence
+  const [queryToolState, setQueryToolState] = React.useState<{
+    mode: 'text' | 'visual';
+    query: string;
+    result: any;
+    conditions: any[];
+    logicOperator: 'AND' | 'OR';
+  }>({
+    mode: 'text',
+    query: '',
+    result: null,
+    conditions: [],
+    logicOperator: 'AND'
+  });
 
   // Load from localStorage on mount
   React.useEffect(() => {
@@ -229,10 +245,6 @@ function App() {
     }
   };
 
-  const handleArrayUpdate = (newArray: JsonArray) => {
-    handleDocumentUpdate(newArray);
-  };
-
   const handleDownload = () => {
     if (!document.parsed) return;
 
@@ -373,6 +385,30 @@ function App() {
         {!document.parsed ? (
           <div className="upload-section">
             <FileUploader onFileLoad={handleFileLoad} />
+            <div className="upload-divider">
+              <span>or</span>
+            </div>
+            <button className="btn-create-empty" onClick={() => {
+              const emptyDoc = {};
+              const content = JSON.stringify(emptyDoc, null, 2);
+              setDocument({
+                raw: content,
+                parsed: emptyDoc,
+                isValid: true,
+                error: null,
+              });
+              setFilename('untitled.json');
+              const initialVersion: VersionHistoryItem = {
+                content,
+                timestamp: Date.now(),
+                label: 'New document'
+              };
+              setVersionHistory([initialVersion]);
+              setCurrentVersionIndex(0);
+            }}>
+              <span className="material-symbols-outlined">edit_document</span>
+              Create Empty Document
+            </button>
             {document.error && (
               <div className="error-banner">
                 <strong>Error:</strong> {document.error}
@@ -381,13 +417,6 @@ function App() {
           </div>
         ) : (
           <div className="document-section">
-            <div className="query-section">
-              <QueryTool 
-                data={document.parsed} 
-                onResultClick={setHighlightPath}
-              />
-            </div>
-
             <ResizablePanels
               leftPanel={
                 <div className="viewer-panel">
@@ -399,6 +428,7 @@ function App() {
                     currentVersionIndex={currentVersionIndex}
                     onUndo={handleUndo}
                     onRedo={handleRedo}
+                    onOpenQuery={() => setShowQueryDialog(true)}
                   />
                 </div>
               }
@@ -452,6 +482,43 @@ function App() {
                 <span className="material-symbols-outlined">restore</span>
                 Restore Session
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Query Dialog */}
+      {showQueryDialog && document.parsed && (
+        <div 
+          className="query-overlay" 
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              e.preventDefault();
+            }
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowQueryDialog(false);
+            }
+          }}
+        >
+          <div className="query-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="query-dialog-header">
+              <h3>JSON Query Tool</h3>
+              <button onClick={() => setShowQueryDialog(false)} className="btn-close-dialog">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="query-dialog-content">
+              <QueryTool 
+                data={document.parsed} 
+                onResultClick={(path) => {
+                  setHighlightPath(path);
+                  setShowQueryDialog(false);
+                }}
+                initialState={queryToolState}
+                onStateChange={setQueryToolState}
+              />
             </div>
           </div>
         </div>

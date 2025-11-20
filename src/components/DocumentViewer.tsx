@@ -7,6 +7,8 @@ import { CompareView } from './CompareView';
 import { ConvertView } from './ConvertView';
 import { AnalyzeView } from './AnalyzeView';
 import FormatView from './FormatView';
+import { MergeView } from './MergeView';
+import { ApiImportView } from './ApiImportView';
 import Editor from '@monaco-editor/react';
 import { useTheme } from '../contexts/ThemeContext';
 import type * as Monaco from 'monaco-editor';
@@ -20,6 +22,7 @@ interface DocumentViewerProps {
   currentVersionIndex: number;
   onUndo: () => void;
   onRedo: () => void;
+  onOpenQuery?: () => void;
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({ 
@@ -29,7 +32,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   versionHistory,
   currentVersionIndex,
   onUndo,
-  onRedo 
+  onRedo,
+  onOpenQuery
 }) => {
   const { theme } = useTheme();
   const [showChartModal, setShowChartModal] = React.useState(false);
@@ -38,6 +42,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [showConvertModal, setShowConvertModal] = React.useState(false);
   const [showAnalyzeModal, setShowAnalyzeModal] = React.useState(false);
   const [showFormatModal, setShowFormatModal] = React.useState(false);
+  const [showMergeModal, setShowMergeModal] = React.useState(false);
+  const [showApiImportModal, setShowApiImportModal] = React.useState(false);
   const [rawJson, setRawJson] = React.useState(formatJson(data));
   const [error, setError] = React.useState<string | null>(null);
   const debounceTimerRef = React.useRef<number | null>(null);
@@ -273,11 +279,32 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <div className="viewer-header">
           <div className="view-toolbar">
             <button 
+              onClick={onOpenQuery} 
+              className="btn-toolbar"
+            >
+              <span className="material-symbols-outlined">search</span>
+              <span className="btn-toolbar-label">Query</span>
+            </button>
+            <button 
               onClick={() => setShowCompareModal(true)} 
               className="btn-toolbar"
             >
               <span className="material-symbols-outlined">compare</span>
               <span className="btn-toolbar-label">Compare</span>
+            </button>
+            <button 
+              onClick={() => setShowMergeModal(true)} 
+              className="btn-toolbar"
+            >
+              <span className="material-symbols-outlined">merge</span>
+              <span className="btn-toolbar-label">Merge</span>
+            </button>
+            <button 
+              onClick={() => setShowApiImportModal(true)} 
+              className="btn-toolbar"
+            >
+              <span className="material-symbols-outlined">cloud_download</span>
+              <span className="btn-toolbar-label">Import API</span>
             </button>
             <button 
               onClick={() => setShowSchemaModal(true)} 
@@ -480,6 +507,32 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             }
           }}
           onClose={() => setShowFormatModal(false)}
+        />
+      )}
+
+      {/* Merge View Modal */}
+      {showMergeModal && (
+        <MergeView
+          baseDocument={data}
+          onMerge={(merged) => {
+            onUpdate(merged);
+          }}
+          onClose={() => setShowMergeModal(false)}
+        />
+      )}
+
+      {/* API Import Modal */}
+      {showApiImportModal && (
+        <ApiImportView
+          onImport={(data) => {
+            try {
+              const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+              onUpdate(parsed);
+            } catch (e) {
+              setError('Invalid JSON from API');
+            }
+          }}
+          onClose={() => setShowApiImportModal(false)}
         />
       )}
     </>

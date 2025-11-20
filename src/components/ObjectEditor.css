@@ -4,6 +4,7 @@
   background-color: var(--card-bg);
   overflow: hidden;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .object-editor.highlighted-direct {
@@ -31,20 +32,29 @@
   background-color: rgba(59, 130, 246, 0.1);
 }
 
+/* Depth-based visual hierarchy with left border indicators */
 .object-editor.depth-1 {
   background-color: var(--bg-secondary);
+  border-left: 3px solid rgba(59, 130, 246, 0.5);
+  margin-left: 8px;
 }
 
 .object-editor.depth-2 {
-  background-color: var(--bg-secondary);
+  background-color: rgba(139, 92, 246, 0.05);
+  border-left: 3px solid rgba(139, 92, 246, 0.5);
+  margin-left: 8px;
 }
 
 .object-editor.depth-3 {
-  background-color: var(--bg-secondary);
+  background-color: rgba(236, 72, 153, 0.05);
+  border-left: 3px solid rgba(236, 72, 153, 0.5);
+  margin-left: 8px;
 }
 
 .object-editor.depth-4 {
-  background-color: var(--bg-secondary);
+  background-color: rgba(251, 146, 60, 0.05);
+  border-left: 3px solid rgba(251, 146, 60, 0.5);
+  margin-left: 8px;
 }
 
 .object-header {
@@ -57,10 +67,41 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s ease;
+  position: relative;
 }
 
 .object-header:hover {
   background-color: var(--bg-color);
+}
+
+/* Depth indicator stripe on hover */
+.object-editor.depth-1 .object-header:hover::before,
+.object-editor.depth-2 .object-header:hover::before,
+.object-editor.depth-3 .object-header:hover::before,
+.object-editor.depth-4 .object-header:hover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  opacity: 1;
+}
+
+.object-editor.depth-1 .object-header:hover::before {
+  background-color: rgba(59, 130, 246, 0.8);
+}
+
+.object-editor.depth-2 .object-header:hover::before {
+  background-color: rgba(139, 92, 246, 0.8);
+}
+
+.object-editor.depth-3 .object-header:hover::before {
+  background-color: rgba(236, 72, 153, 0.8);
+}
+
+.object-editor.depth-4 .object-header:hover::before {
+  background-color: rgba(251, 146, 60, 0.8);
 }
 
 .expand-icon {
@@ -75,6 +116,23 @@
   font-weight: 600;
   color: var(--text-primary);
   font-size: 0.95rem;
+}
+
+/* Depth-based label styling for visual hierarchy */
+.object-editor.depth-1 .object-header .object-label {
+  color: rgba(59, 130, 246, 0.9);
+}
+
+.object-editor.depth-2 .object-header .object-label {
+  color: rgba(139, 92, 246, 0.9);
+}
+
+.object-editor.depth-3 .object-header .object-label {
+  color: rgba(236, 72, 153, 0.9);
+}
+
+.object-editor.depth-4 .object-header .object-label {
+  color: rgba(251, 146, 60, 0.9);
 }
 
 .object-type {
@@ -124,8 +182,15 @@
   padding: 0;
 }
 
+/* Increase spacing for nested objects to improve visual hierarchy */
 .nested-object-container {
-  margin: 4px 0;
+  margin: 8px 0;
+}
+
+.object-editor.depth-1 .nested-object-container,
+.object-editor.depth-2 .nested-object-container,
+.object-editor.depth-3 .nested-object-container {
+  padding-left: 4px;
 }
 
 .object-editor-max-depth {
